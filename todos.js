@@ -4,6 +4,7 @@ const flash = require("express-flash");
 const session = require("express-session");
 const TodoList = require("./lib/todolist");
 const { body, validationResult } = require("express-validator");
+const { sortTodos, sortTodoLists } = require("./lib/sort");
 
 const app = express();
 const host = "localhost";
@@ -11,27 +12,8 @@ const port = 3000;
 
 let todoLists = require("./lib/seed-data");
 
-function sortTodoLists(list) {
-  function titleSort(listA, listB) {
-    let titleA = listA.title.toLowerCase();
-    let titleB = listB.title.toLowerCase();
-
-    if (titleA < titleB) {
-      return -1;
-    } else if (titleA > titleB) {
-      return 1;
-    } else {
-      return 0;
-    }
-  }
-
-  let doneList = list.filter((currList) => currList.isDone());
-  let undoneList = list.filter((currList) => !currList.isDone());
-
-  doneList = doneList.sort(titleSort);
-  undoneList = undoneList.sort(titleSort);
-
-  return undoneList.concat(doneList);
+function findList(listId) {
+  return todoLists.filter((list) => list.id === listId)[0];
 }
 
 app.set("views", "./views");
@@ -75,7 +57,7 @@ app.post(
       .isLength({ min: 1 })
       .withMessage("Please enter a list title.")
       .isLength({ max: 100 })
-      .withMessage("Title length cannot exceed 100 characters.")
+      .withMessage("List title must be between 1 and 100 characters.")
       .custom((title) => {
         let duplicate = todoLists.find((list) => list.title === title);
         return duplicate === undefined;
@@ -84,9 +66,8 @@ app.post(
   ],
   (req, res) => {
     let errors = validationResult(req);
-
     if (!errors.isEmpty()) {
-      errors.array().forEach((message) => flash("error", message.msg));
+      errors.array().forEach((message) => req.flash("error", message.msg));
       res.render("new-list", {
         flash: req.flash(),
         todoListTitle: req.body.todoListTitle,
@@ -98,6 +79,25 @@ app.post(
     }
   }
 );
+
+app.get("/lists/:todoListId", (req, res, next) => {
+  let todoListId = req.params.todoListId;
+  let todoList = findList(+todoListId);
+  if (todoList === undefined) {
+    next(new Error("Not found."));
+  } else {
+    res.render("list", {
+      todoList: todoList,
+      todos: sortTodos(todoList),
+    });
+  }
+});
+
+// Error handler
+app.use((err, req, res, _next) => {
+  console.log(err); // Writes more extensive information to the console log
+  res.status(404).send(err.message);
+});
 
 // Listener
 app.listen(port, host, () => {

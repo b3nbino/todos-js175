@@ -8,7 +8,7 @@ block main
       each list in todoLists
         li(class=list.isDone() ? "done" : "")
           a(href=`/lists/${list.id}`)
-            h2= list.title
+            h2= list.getTitle()
             p #{list.allDone().size()} / #{list.size()}
 
 block headerLinks
