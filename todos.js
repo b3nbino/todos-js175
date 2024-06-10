@@ -1,6 +1,8 @@
 const express = require("express");
 const morgan = require("morgan");
 const TodoList = require("./lib/todolist");
+const express_validator = require("express-validator");
+let body = express_validator.body;
 
 const app = express();
 const host = "localhost";
@@ -52,8 +54,25 @@ app.get("/lists/new", (req, res) => {
 
 app.post("/lists", (req, res) => {
   let title = req.body.todoListTitle.trim();
-  todoLists.push(new TodoList(title));
-  res.redirect("/lists");
+
+  if (title.length === 0) {
+    res.render("new-list", {
+      errorMessage: "Please enter a list title.",
+    });
+  } else if (title.length > 100) {
+    res.render("new-list", {
+      errorMessage: "Title length cannot exceed 100 characters.",
+      todoListTitle: title,
+    });
+  } else if (todoLists.some((list) => list.getTitle() === title)) {
+    res.render("new-list", {
+      errorMessage: "Duplicate title. Please enter a unique title.",
+      todoListTitle: title,
+    });
+  } else {
+    todoLists.push(new TodoList(title));
+    res.redirect("/lists");
+  }
 });
 
 // Listener
