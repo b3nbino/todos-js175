@@ -128,6 +128,19 @@ app.post("/lists/:todoListId/todos/:todoId/destroy", (req, res, next) => {
   res.redirect(`/lists/${req.params.todoListId}`);
 });
 
+app.post("/lists/:todoListId/complete_all", (req, res, next) => {
+  let todoListId = req.params.todoListId;
+  let todoList = findList(+todoListId);
+
+  if (todoList === undefined) {
+    next(new Error("Not found."));
+  }
+
+  todoList.markAllDone();
+  req.flash("success", "Marked all todos as done!");
+  res.redirect(`/lists/${req.params.todoListId}`);
+});
+
 app.use((err, req, res, _next) => {
   console.log(err); // Writes more extensive information to the console log
   res.status(404).send(err.message);
