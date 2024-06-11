@@ -98,6 +98,7 @@ app.post("/lists/:todoListId/todos/:todoId/toggle", (req, res, next) => {
   let todo = todoList.findById(+req.params.todoId);
 
   if (todo === undefined) {
+    //Throws error if checking todo exists
     next(new Error("Todo not found"));
   }
 
@@ -109,6 +110,21 @@ app.post("/lists/:todoListId/todos/:todoId/toggle", (req, res, next) => {
     req.flash("success", `${todo.getTitle()} done!`);
   }
 
+  res.redirect(`/lists/${req.params.todoListId}`);
+});
+
+app.post("/lists/:todoListId/todos/:todoId/destroy", (req, res, next) => {
+  let todoList = findList(+req.params.todoListId);
+  let todo = todoList.findById(+req.params.todoId);
+
+  if (todo === undefined) {
+    //Throws error if checking todo exists
+    next(new Error("Todo not found"));
+  }
+
+  let todoIndex = todoList.findIndexOf(todo);
+  todoList.removeAt(todoIndex);
+  req.flash("success", `Removed ${todo.getTitle()}.`);
   res.redirect(`/lists/${req.params.todoListId}`);
 });
 
