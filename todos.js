@@ -12,7 +12,6 @@ const host = "localhost";
 const port = 3000;
 
 let todoLists = require("./lib/seed-data");
-const Todo = require("./lib/todo");
 
 function findList(listId) {
   return todoLists.filter((list) => list.id === listId)[0];
@@ -52,6 +51,7 @@ app.get("/lists/new", (req, res) => {
 });
 
 app.post(
+  //Lets user make new lists
   "/lists",
   [
     body("todoListTitle")
@@ -148,6 +148,7 @@ app.post("/lists/:todoListId/complete_all", (req, res, next) => {
 });
 
 app.post(
+  //Lets user add todos to list
   "/lists/:todoListId/todos",
   [
     body("todoTitle")
@@ -176,6 +177,73 @@ app.post(
     } else {
       todoList.add(new Todo(todoTitle));
       req.flash("success", `${todoTitle} added!`);
+      res.redirect(`/lists/${todoListId}`);
+    }
+  }
+);
+
+app.get("/lists/:todoListId/edit", (req, res, next) => {
+  //Renders edit todo page
+  let todoListId = req.params.todoListId;
+  let todoList = findList(+todoListId);
+
+  if (todoList === undefined) {
+    next(new Error("Not found."));
+  }
+
+  res.render("edit-list", { todoList });
+});
+
+app.post("/lists/:todoListId/destroy", (req, res, next) => {
+  //Deletes list
+  let todoListId = req.params.todoListId;
+  let todoList = findList(+todoListId);
+
+  if (todoList === undefined) {
+    next(new Error("Not found."));
+  }
+
+  let listIndex = todoLists.indexOf(todoList);
+  todoLists.splice(listIndex, 1);
+
+  req.flash("success", `${todoList.title} removed!`);
+  res.redirect("/lists");
+});
+
+app.post(
+  "/lists/:todoListId/edit",
+  [
+    body("todoListTitle")
+      .trim()
+      .isLength({ min: 1 })
+      .withMessage("Please enter a list title.")
+      .isLength({ max: 100 })
+      .withMessage("List title must be between 1 and 100 characters.")
+      .custom((title) => {
+        let duplicate = todoLists.find((list) => list.title === title);
+        return duplicate === undefined;
+      })
+      .withMessage("List title must be unique."),
+  ],
+  (req, res, next) => {
+    //Changes list title
+    let todoListId = req.params.todoListId;
+    let todoList = findList(+todoListId);
+    let errors = validationResult(req);
+
+    if (todoList === undefined) {
+      next(new Error("Not found."));
+    } else if (!errors.isEmpty()) {
+      errors.array().forEach((error) => req.flash("error", error.msg));
+      res.render("edit-list", {
+        flash: req.flash(),
+        todoList,
+        todoListTitle: req.body.todoListTitle,
+      });
+    } else {
+      todoList.setTitle(req.body.todoListTitle);
+
+      req.flash("success", "Todo name changed.");
       res.redirect(`/lists/${todoListId}`);
     }
   }
