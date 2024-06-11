@@ -93,7 +93,25 @@ app.get("/lists/:todoListId", (req, res, next) => {
   }
 });
 
-// Error handler
+app.post("/lists/:todoListId/todos/:todoId/toggle", (req, res, next) => {
+  let todoList = findList(+req.params.todoListId);
+  let todo = todoList.findById(+req.params.todoId);
+
+  if (todo === undefined) {
+    next(new Error("Todo not found"));
+  }
+
+  if (todo.isDone()) {
+    todo.markUndone();
+    req.flash("success", `${todo.getTitle()} undone!`);
+  } else {
+    todo.markDone();
+    req.flash("success", `${todo.getTitle()} done!`);
+  }
+
+  res.redirect(`/lists/${req.params.todoListId}`);
+});
+
 app.use((err, req, res, _next) => {
   console.log(err); // Writes more extensive information to the console log
   res.status(404).send(err.message);
