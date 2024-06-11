@@ -3,6 +3,7 @@ const morgan = require("morgan");
 const flash = require("express-flash");
 const session = require("express-session");
 const TodoList = require("./lib/todolist");
+const Todo = require("./lib/todo");
 const { body, validationResult } = require("express-validator");
 const { sortTodos, sortTodoLists } = require("./lib/sort");
 
@@ -11,6 +12,7 @@ const host = "localhost";
 const port = 3000;
 
 let todoLists = require("./lib/seed-data");
+const Todo = require("./lib/todo");
 
 function findList(listId) {
   return todoLists.filter((list) => list.id === listId)[0];
@@ -81,6 +83,7 @@ app.post(
 );
 
 app.get("/lists/:todoListId", (req, res, next) => {
+  //Renders todo list page
   let todoListId = req.params.todoListId;
   let todoList = findList(+todoListId);
   if (todoList === undefined) {
@@ -94,6 +97,7 @@ app.get("/lists/:todoListId", (req, res, next) => {
 });
 
 app.post("/lists/:todoListId/todos/:todoId/toggle", (req, res, next) => {
+  //Adds checkbox functionality
   let todoList = findList(+req.params.todoListId);
   let todo = todoList.findById(+req.params.todoId);
 
@@ -114,6 +118,7 @@ app.post("/lists/:todoListId/todos/:todoId/toggle", (req, res, next) => {
 });
 
 app.post("/lists/:todoListId/todos/:todoId/destroy", (req, res, next) => {
+  //Adds delete functionality
   let todoList = findList(+req.params.todoListId);
   let todo = todoList.findById(+req.params.todoId);
 
@@ -129,6 +134,7 @@ app.post("/lists/:todoListId/todos/:todoId/destroy", (req, res, next) => {
 });
 
 app.post("/lists/:todoListId/complete_all", (req, res, next) => {
+  //Adds complete all functionality
   let todoListId = req.params.todoListId;
   let todoList = findList(+todoListId);
 
@@ -138,8 +144,42 @@ app.post("/lists/:todoListId/complete_all", (req, res, next) => {
 
   todoList.markAllDone();
   req.flash("success", "Marked all todos as done!");
-  res.redirect(`/lists/${req.params.todoListId}`);
+  res.redirect(`/lists/${todoListId}`);
 });
+
+app.post(
+  "/lists/:todoListId/todos",
+  [
+    body("todoTitle")
+      .trim()
+      .isLength({ min: 1 })
+      .withMessage("Please enter a todo title.")
+      .isLength({ max: 100 })
+      .withMessage("Todo title must be between 1 and 100 characters."),
+  ],
+  (req, res, next) => {
+    let todoListId = req.params.todoListId;
+    let todoList = findList(+todoListId);
+    let errors = validationResult(req);
+    let todoTitle = req.body.todoTitle;
+
+    if (todoList === undefined) {
+      next(new Error("Not found."));
+    } else if (!errors.isEmpty()) {
+      errors.array().forEach((message) => req.flash("error", message.msg));
+      res.render("list", {
+        todoList: todoList,
+        todos: sortTodos(todoList),
+        flash: req.flash(),
+        todoTitle: todoTitle,
+      });
+    } else {
+      todoList.add(new Todo(todoTitle));
+      req.flash("success", `${todoTitle} added!`);
+      res.redirect(`/lists/${todoListId}`);
+    }
+  }
+);
 
 app.use((err, req, res, _next) => {
   console.log(err); // Writes more extensive information to the console log
